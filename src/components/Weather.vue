@@ -1,58 +1,61 @@
 <template lang="html">
-  <section class="content" style="height:100%">
-    <div class="now">
-      <div v-if="!loading" class="wx-info text-center">
-        <span class="city">{{activeCity.toUpperCase()}}</span>
-        <span class="lower">Погода по состоянию на {{toDate((new Date())/1000)}}</span>
-        <div class="temp">
-          <img :src="'//openweathermap.org/img/w/'+weather.weather[0].icon+'.png'" alt="">
-          <span>{{weather.main.temp}}<sup>0</sup>C</span>
-        </div>
-        <div class="wx-row">
-          <div class="wx-col">
-              <img class="icon" src="/icons/wind.svg" alt="">
-              <span>Ветер</span>
-              <span class="d-block">{{weather.wind.speed}} м/с</span>
+  <section class="content">
+    <div class="row wx-now">
+      <div class="col-6 now mt-2">
+        <div v-if="!loading" class="wx-info text-center">
+          <span class="city">{{selectedCity.ru}}</span>
+          <span class="lower">Погода по состоянию на {{toDate((new Date())/1000)}}</span>
+          <div class="temp">
+            <img :src="'//openweathermap.org/img/w/'+weather.weather[0].icon+'.png'" alt="">
+            <span>{{weather.main.temp}}<sup>0</sup>C</span>
           </div>
-          <div class="wx-col">
-              <img class="icon" src="/icons/pressure.png" alt="">
-               <span>Давление</span>
-               <span class="d-block">{{pressure(weather.main.pressure)}} мм рт.ст</span>
-          </div>
-          <div class="wx-col">
-              <img class="icon" src="/icons/humidity.png" alt="">
-               <span class="wx-label">Влажность</span>
-               <span class="d-block">{{weather.main.humidity}} %</span>
-          </div>
-        </div>
-        <div class="wx-row mt-3">
+          <div class="wx-row">
             <div class="wx-col">
-              <img class="icon" src="/icons/sunrise.png" alt="">
-              <span>Восход</span>
-              <span class="d-block">{{toDate(weather.sys.sunrise)}}</span>
+                <img class="icon" src="/icons/wind.svg" alt="">
+                <span>Ветер</span>
+                <span class="d-block">{{weather.wind.speed}} м/с</span>
             </div>
             <div class="wx-col">
-              <img class="icon" src="/icons/sunset.png" alt="">
-              <span>Закат</span>
-              <span class="d-block">{{toDate(weather.sys.sunset)}}</span>
+                <img class="icon" src="/icons/pressure.png" alt="">
+                 <span>Давление</span>
+                 <span class="d-block">{{pressure(forecastPressure)}} мм рт.ст</span>
             </div>
             <div class="wx-col">
-              <img class="icon" src="/icons/map.png" alt="">
-              <a :href="'https://www.windy.com/ru/-%D0%9E%D0%B1%D0%BB%D0%B0%D0%BA%D0%B0-clouds?clouds,'+weather.coord.lat+','+weather.coord.lon" target="_blank" rel="noreferrer noopener">
-                <span>На карте?</span>
-                <span class="d-block">{{[weather.coord.lat, weather.coord.lon]}}</span>
-               </a>
-             </div>
+                <img class="icon" src="/icons/humidity.png" alt="">
+                 <span class="wx-label">Влажность</span>
+                 <span class="d-block">{{weather.main.humidity}} %</span>
+            </div>
           </div>
-        </div>
-        <div v-else class="notLoading">
-          <i class="spinner fas fa-spinner fa-5x"></i>
+          <div class="wx-row mt-3">
+              <div class="wx-col">
+                <img class="icon" src="/icons/sunrise.png" alt="">
+                <span>Восход</span>
+                <span class="d-block">{{toDate(weather.sys.sunrise)}}</span>
+              </div>
+              <div class="wx-col">
+                <img class="icon" src="/icons/sunset.png" alt="">
+                <span>Закат</span>
+                <span class="d-block">{{toDate(weather.sys.sunset)}}</span>
+              </div>
+              <div class="wx-col">
+                <img class="icon" src="/icons/map.png" alt="">
+                <a :href="'https://www.windy.com/ru/-%D0%9E%D0%B1%D0%BB%D0%B0%D0%BA%D0%B0-clouds?clouds,'+weather.coord.lat+','+weather.coord.lon" target="_blank" rel="noreferrer noopener">
+                  <span>На карте?</span>
+                  <span class="d-block">{{[weather.coord.lat, weather.coord.lon]}}</span>
+                 </a>
+               </div>
+            </div>
+          </div>
+          <div v-else class="notLoading">
+            <div class="spinner-16"></div>
+          </div>
         </div>
       </div>
+      <Forecast />
       <div class="cities">
         <ul class="wx-ul">
           <li v-for="(city, index) in cities" :key="index" class="wx-li" @click="selectCity(city)">
-            {{city}}
+            <span class="wx-city">{{city.ru}}</span>
           </li>
         </ul>
       </div>
@@ -60,73 +63,58 @@
 </template>
 
 <script>
-import axios from 'axios';
+import Forecast from './Forecast.vue';
+import { mapGetters } from 'vuex';
+import utils from '../utils';
+
 export default {
   name: 'Weather',
-  data(){
-    return {
-      cities: ['Irkutsk','Chita','Novosibirsk'],
-      activeCity:'',
-      weather:'',
-      backgroundClass:'',
-      loading:false,
-    }
+  components: {
+    Forecast,
   },
   created(){
-    this.activeCity = localStorage.getItem('city') || 'Chita';
-    this.getWeather(this.activeCity);
+    this.$store.dispatch('setInitCity');
+    this.$store.dispatch('fetchData');
+    this.pressure = utils.pressure;
+    this.toDate = utils.toDate;
   },
-  methods:{
-    pressure(hpa){
-      return (hpa / 1.333).toFixed(0);
-    },
-    toDate(date){
-      let newDate = new Date(date*1000);
-      return [newDate.getHours(), newDate.getMinutes()].map((item) => item > 9 ? item : '0'+item).join(':');
-    },
-    setBackground(){
-      let page = document.querySelector('.content');
-      if (this.backgroundClass !== '') page.classList.remove(this.backgroundClass);
-      if (+((new Date().valueOf())/1000) < this.weather.sys.sunset){
-        if (this.weather.weather[0].main === 'Clear') this.backgroundClass = 'clearSky';
-        else if (this.weather.weather[0].main === 'Clouds') this.backgroundClass = 'cloud';
-        else if (this.weather.weather[0].main === 'Rain') this.backgroundClass = 'rain';
-        else if (this.weather.weather[0].main === 'Snow') this.backgroundClass = 'snow';
-    } else{
-        if (this.weather.weather[0].main === 'Clear') this.backgroundClass = 'clearSkyNight';
-        else if (this.weather.weather[0].main === 'Clouds') this.backgroundClass = 'cloudNight';
-        else if (this.weather.weather[0].main === 'Rain') this.backgroundClass = 'rainNight';
-        else if (this.weather.weather[0].main === 'Snow') this.backgroundClass = 'snowNight';
+  computed: {
+    ...mapGetters([
+      'loading',
+      'weather',
+      'forecast',
+      'cities',
+      'selectedCity',
+    ]),
+    forecastPressure(){
+      const day = Object.keys(this.$store.state.dailyForecast)[0];
+      const hour = Object.keys(this.$store.state.dailyForecast[day])[0];
+      return this.$store.state.dailyForecast[day][hour].main.pressure;
     }
-      page.classList.add(this.backgroundClass);
-    },
+  },
+  methods: {
     selectCity(city){
-      this.activeCity = city;
-      localStorage.setItem('city', city);
-      this.getWeather(city)
+      this.$store.dispatch('selectCity', city);
     },
-    getWeather(city){
-      city = city || 'Chita';
-      this.loading = true;
-      axios.get(`https://api.openweathermap.org/data/2.5/weather?q=${city}&APPID=dc36d8a3f83a8df61146aa8e85746991&units=metric`)
-        .then((response) => {
-          console.log(response.data)
-          this.weather = response.data
-          this.loading = false;
-          this.setBackground();
-      });
-    },
-    getForecast(city){
-      axios.get(`https://api.openweathermap.org/data/2.5/forecast?q=${city}&APPID=dc36d8a3f83a8df61146aa8e85746991`)
-        .then((response) => {
-          console.log(response)
-      })
-    }
-  },
+  }
 }
 </script>
 
 <style lang="css">
+.content{
+  height: 100vh;
+  min-width: 490px;
+  margin: 0;
+}
+.content .wx-now{
+  background: inherit;
+}
+.content .row{
+  margin: 0;
+  position: relative;
+  justify-content: center;
+  align-items: center;
+}
 .city{
   position: relative;
   display: block;
@@ -165,26 +153,28 @@ export default {
   transform: scale(1.4);
 }
 .cities{
-  position: absolute;
-  bottom: 20px;
-  width: 100%;
+  min-width: 490px;
+  position: fixed;
+  bottom: 0;
+  width: 100vw;
+  height: 40px;
   background: inherit;
   overflow: hidden;
   box-shadow: 5px 5px 40px 10px rgba(0,0,0,0.5);
 }
 .cities::before{
   content: '';
-  width: 100%;
-  height: 200%;
+  width: 100vw;
+  height: 60px;
   background: inherit;
   position: absolute;
-  left: -25px;
-  top: -25px;
-  box-shadow: inset 0 0 0 1000px rgba(200,255,255,0.3);
-  filter: blur(15px);
+  top: -10px;
+  box-shadow: inset 0 0 0 100px rgba(200,255,255,0.3);
+  filter: blur(8px);
 }
 .cities .wx-ul{
   margin: 0;
+  padding: 0;
   display: flex;
   position: relative;
   justify-content: space-around;
@@ -193,30 +183,38 @@ export default {
 .cities .wx-ul .wx-li{
   cursor: pointer;
   list-style: none;
-  font-size: 2em;
+  font-size: 1.5em;
+}
+.wx-city{
+  padding: 1em;
+  cursor: pointer;
+  transition: all .7s;
+  color: rgba(10,10,10,.5);
+}
+.wx-city:hover{
+  background-color: rgba(255,255,255,.3);
+  border-radius: 80px;
+  color: rgba(0,0,0,.9);
 }
 .now{
+   min-width: 360px;
+   max-width: 500px;
+   padding: 1em 0 1em 0;
    background: inherit;
-   width: 400px;
-   height: 350px;
-   top:10px;
-   left:50%;
-   margin-left: -200px;
-   position: relative;
    overflow: hidden;
-   border-radius: 8%;
+   border-radius: 15px;
    box-shadow: 5px 5px 40px 10px rgba(0,0,0,0.5);
   }
-.now:before{
+.now:before {
    content: '';
-   width: 450px;
-   height: 400px;
+   width: 105%;
+   height: 105%;
    background: inherit;
    position: absolute;
-   left: -25px;
-   top: -25px;
+   left: -2.5%;
+   top: -2.5%;
    box-shadow: inset 0 0 0 1000px rgba(200,255,255,0.3);
-   filter: blur(15px);
+   filter: blur(10px);
   }
   .now .notLoading{
     height: 100%;
@@ -275,12 +273,40 @@ export default {
     background-size: cover;
     background-attachment: fixed;
   }
-  @keyframes spinner {
-      from{
-        transform: rotate(0);
+  .spinner-16 {
+      font-size: 10px;
+      width: 10em;
+      height: 10em;
+      position: relative;
+  }
+  .spinner-16::before,
+  .spinner-16::after {
+      content: "";
+      background-color: transparent;
+      position: absolute;
+      left: 4.5em;
+      top: 4.5em;
+      width: 1em;
+      height: 1em;
+      border-radius: 50%;
+      box-sizing: border-box;
+      border: .2em solid black;
+      animation: spinner-16 1s infinite cubic-bezier(0, 0.25, 0.75, 1);
+  }
+  .spinner-16::before {
+      animation-delay: 0s;
+  }
+  .spinner-16::after {
+      animation-delay: -.5s;
+  }
+  @keyframes spinner-16 {
+      0% {
+          opacity: 1;
+          transform: scale(0);
       }
-      to{
-        transform: rotate(360deg);
+      100% {
+          opacity: 0;
+          transform: scale(10);
       }
   }
 </style>

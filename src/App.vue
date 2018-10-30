@@ -11,16 +11,22 @@ export default {
   name: 'app',
   components: {
     Weather,
-  }
+  },
 }
 </script>
 
 <style>
-html, body{
+html {
+  position: relative;
+  min-height: 100%;
+}
+body{
   height: 100vh;
 }
 #app {
-  height: 100%;
+  position: relative;
+  min-height: 100%;
+  min-width: 490px;
   font-family: 'Avenir', Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
